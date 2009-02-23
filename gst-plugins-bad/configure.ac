@@ -73,7 +73,7 @@ AC_SUBST(ACLOCAL_AMFLAGS, "-I m4 -I common/m4")
 
 dnl set up gettext
 dnl the version check needs to stay here because autopoint greps for it
-AM_GNU_GETTEXT_VERSION([0.17])
+AM_GNU_GETTEXT_VERSION([0.13])
 AM_GNU_GETTEXT([external])
 AG_GST_GETTEXT([gst-plugins-bad-$GST_MAJORMINOR])
 
