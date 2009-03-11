@@ -204,7 +204,7 @@ static guint camerabin_signals[LAST_SIGNAL];
 #define DEFAULT_FPS_N 0         /* makes it use the default */
 #define DEFAULT_FPS_D 1
 
-#define CAMERABIN_DEFAULT_VF_CAPS "video/x-raw-yuv,format=(fourcc)I420"
+#define CAMERABIN_DEFAULT_VF_CAPS "video/x-raw-yuv,format=(fourcc)UYVY"
 #define CAMERABIN_MAX_VF_WIDTH 848
 #define CAMERABIN_MAX_VF_HEIGHT 848
 
