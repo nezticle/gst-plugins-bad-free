@@ -624,7 +624,7 @@ gst_camerabin_video_create_elements (GstCameraBinVideo * vid)
   }
   /* Set queue leaky, we don't want to block video encoder feed, but
      prefer leaking view finder buffers instead. */
-  g_object_set (G_OBJECT (queue), "leaky", 2, "max-size-buffers", 1, "silent",
+  g_object_set (G_OBJECT (queue), "leaky", 1, "max-size-buffers", 1, "silent",
       TRUE, NULL);
 
   /* Set up src ghost pad for video bin */
