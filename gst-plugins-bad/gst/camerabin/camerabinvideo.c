@@ -508,12 +508,6 @@ gst_camerabin_video_create_elements (GstCameraBinVideo * vid)
   /* Add queue element for video */
   vid->tee_video_srcpad = gst_element_get_request_pad (vid->tee, "src%d");
 
-  vid->video_queue = gst_element_factory_make ("queue", "video-queue");
-  if (!gst_camerabin_add_element (vidbin, vid->video_queue)) {
-    goto error;
-  }
-  g_object_set (vid->video_queue, "silent", TRUE, NULL);
-
   /* Add probe for rewriting video timestamps */
   vid->vid_tee_probe_id = gst_pad_add_buffer_probe (vid->tee_video_srcpad,
       G_CALLBACK (camerabin_video_pad_tee_src0_have_buffer), vid);
@@ -538,6 +532,11 @@ gst_camerabin_video_create_elements (GstCameraBinVideo * vid)
     goto error;
   }
 
+  vid->video_queue = gst_element_factory_make ("queue", "video-queue");
+  if (!gst_camerabin_add_element (vidbin, vid->video_queue)) {
+    goto error;
+  }
+  
   /* Add application set or default muxer element */
   if (vid->app_mux) {
     vid->muxer = vid->app_mux;
