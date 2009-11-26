@@ -44,7 +44,8 @@ noinst_HEADERS = gstcamerabin.h             \
 		 camerabindebug.h           \
 		 camerabingeneral.h         \
 		 camerabinpreview.h         \
-		 gstcamerabin-enum.h
+		 gstcamerabin-enum.h        \
+		 gstcamerabin-performance.h
 
 Android.mk: Makefile.am $(BUILT_SOURCES)
 	androgenizer \

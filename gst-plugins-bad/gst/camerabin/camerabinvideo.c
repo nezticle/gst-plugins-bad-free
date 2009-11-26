@@ -55,6 +55,7 @@
 #include "config.h"
 #endif
 
+#include "gstcamerabin-performance.h"
 #include <gst/gst.h>
 #include "camerabindebug.h"
 #include "camerabingeneral.h"
@@ -641,6 +642,7 @@ gst_camerabin_video_create_elements (GstCameraBinVideo * vid)
     g_object_set (vid->aud_src, "provide-clock", FALSE, NULL);
   }
 
+  CP ("VIDEOBIN ELEMENTS CREATED");
   GST_DEBUG ("created video elements");
 
   return TRUE;

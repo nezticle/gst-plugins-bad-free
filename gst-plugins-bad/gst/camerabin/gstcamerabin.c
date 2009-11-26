@@ -151,6 +151,7 @@
 #  include <config.h>
 #endif
 
+#include "gstcamerabin-performance.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -848,6 +849,7 @@ camerabin_create_elements (GstCameraBin * camera)
   ret = TRUE;
 
 done:
+  CP ("CAMERABIN ELEMENTS CREATED");
 
   if (FALSE == ret)
     camerabin_destroy_elements (camera);
@@ -1040,6 +1042,7 @@ gst_camerabin_change_mode (GstCameraBin * camera, gint mode)
 {
   if (camera->mode != mode || !camera->active_bin) {
     GstState state, pending_state;
+    CP ("CAMERABIN MODE CHANGE");
 
     GST_DEBUG_OBJECT (camera, "setting mode: %d (old_mode=%d)",
         mode, camera->mode);
@@ -1080,6 +1083,7 @@ gst_camerabin_change_mode (GstCameraBin * camera, gint mode)
       gst_camerabin_image_prepare_elements (GST_CAMERABIN_IMAGE
           (camera->imgbin));
     }
+    CP ("CAMERABIN MODE CHANGED");
   }
 }
 
@@ -1668,6 +1672,7 @@ gst_camerabin_start_video_recording (GstCameraBin * camera)
    * use a queue overrun signal?
    */
   GST_INFO_OBJECT (camera, "starting video capture");
+  CP ("CAMERABIN START VIDEO RECORDING");
 
   /* check if need to update video capture caps */
   if (camera->video_capture_caps_update) {
@@ -1719,6 +1724,7 @@ gst_camerabin_start_video_recording (GstCameraBin * camera)
     } else {
       gst_element_set_locked_state (camera->vidbin, TRUE);
     }
+    CP ("CAMERABIN VIDEO RECORDING STARTED");
   } else {
     GST_WARNING_OBJECT (camera, "videobin state change failed");
     gst_element_set_state (camera->vidbin, GST_STATE_NULL);
@@ -1801,6 +1807,8 @@ gst_camerabin_send_preview (GstCameraBin * camera, GstBuffer * buffer)
 
   GST_DEBUG_OBJECT (camera, "creating preview");
 
+  CP ("CAMERABIN CREATE PREVIEW");
+
   data = (camera->mode == MODE_IMAGE) ?
       camera->preview_pipeline : camera->video_preview_pipeline;
   prev = gst_camerabin_preview_convert (data, buffer);
@@ -1820,6 +1828,8 @@ gst_camerabin_send_preview (GstCameraBin * camera, GstBuffer * buffer)
       GST_WARNING_OBJECT (camera,
           "This element has no bus, therefore no message sent!");
     }
+
+    CP ("CAMERABIN PREVIEW SENT");
     ret = TRUE;
   }
 
@@ -1965,6 +1975,7 @@ gst_camerabin_have_src_buffer (GstPad * pad, GstBuffer * buffer,
   g_cond_signal (camera->cond);
   g_mutex_unlock (camera->capture_mutex);
 
+  CP ("CAMERABIN SEND IMAGE CAPTURED");
   msg = gst_message_new_element (GST_OBJECT (camera),
       gst_structure_new (IMG_CAPTURED_MESSAGE_NAME, NULL));
 
@@ -2478,6 +2489,7 @@ gst_camerabin_finish_image_capture (GstCameraBin * camera)
     camera->base_crop_bottom = 0;
     gst_camerabin_set_capsfilter_caps (camera, camera->view_finder_caps);
   }
+  CP ("CAMERABIN IMAGE CAPTURE FINISHED");
 }
 
 /*
@@ -3336,7 +3348,7 @@ static void
 gst_camerabin_init (GstCameraBin * camera, GstCameraBinClass * gclass)
 {
   /* GstElementClass *klass = GST_ELEMENT_GET_CLASS (camera); */
-
+  ENTER;
   camera->filename = g_string_new ("");
   camera->mode = DEFAULT_MODE;
   camera->flags = DEFAULT_FLAGS;
@@ -3451,6 +3463,7 @@ static void
 gst_camerabin_finalize (GObject * object)
 {
   G_OBJECT_CLASS (parent_class)->finalize (object);
+  LEAVE;
 }
 
 static void
@@ -3883,6 +3896,10 @@ gst_camerabin_change_state (GstElement * element, GstStateChange transition)
   GstCameraBin *camera = GST_CAMERABIN (element);
   GstStateChangeReturn ret;
 
+#ifdef GST_TIMESTAMPS
+  gboolean measure = FALSE;
+#endif
+
   GST_DEBUG_OBJECT (element, "changing state: %s -> %s",
       gst_element_state_get_name (GST_STATE_TRANSITION_CURRENT (transition)),
       gst_element_state_get_name (GST_STATE_TRANSITION_NEXT (transition)));
@@ -3904,6 +3921,10 @@ gst_camerabin_change_state (GstElement * element, GstStateChange transition)
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
       /* If using autovideosink, set view finder sink properties
          now that actual sink has been created. */
+#ifdef GST_TIMESTAMPS
+      CP ("CAMERABIN STARTING VIEWFINDER");
+      measure = TRUE;
+#endif
       camerabin_setup_view_elements (camera);
       break;
     case GST_STATE_CHANGE_PAUSED_TO_READY:
@@ -3978,6 +3999,12 @@ done:
       gst_element_state_get_name (GST_STATE_TRANSITION_CURRENT (transition)),
       gst_element_state_get_name (GST_STATE_TRANSITION_NEXT (transition)),
       gst_element_state_change_return_get_name (ret));
+
+#ifdef GST_TIMESTAMPS
+  if (measure) {
+    CP ("CAMERABIN VIEWFINDER STARTED");
+  }
+#endif
 
   return ret;
 }
@@ -4055,6 +4082,7 @@ gst_camerabin_imgbin_finished (gpointer u_data)
   GST_STATE_UNLOCK (camera);
 
   /* Send image-done signal */
+  CP ("CAMERABIN IMAGE ENCODING FINISHED");
   gst_camerabin_image_capture_continue (camera, filename);
   g_free (filename);
 
@@ -4073,12 +4101,18 @@ gst_camerabin_handle_message_func (GstBin * bin, GstMessage * msg)
 {
   GstCameraBin *camera = GST_CAMERABIN (bin);
 
+#ifdef GST_TIMESTAMPS
+  const GstStructure *st;
+  gint status;
+#endif
+
   switch (GST_MESSAGE_TYPE (msg)) {
     case GST_MESSAGE_EOS:
       if (GST_MESSAGE_SRC (msg) == GST_OBJECT (camera->vidbin)) {
         /* Video eos */
         GST_DEBUG_OBJECT (camera,
             "got video eos message, stopping video capture");
+	CP ("CAMERABIN VIDEO RECORDING STOPPED");
         g_mutex_lock (camera->capture_mutex);
         camera->capturing = FALSE;
         g_cond_signal (camera->cond);
@@ -4117,6 +4151,22 @@ gst_camerabin_handle_message_func (GstBin * bin, GstMessage * msg)
       g_mutex_unlock (camera->capture_mutex);
       break;
     default:
+#ifdef GST_TIMESTAMPS
+      st = gst_message_get_structure (msg);
+      if (st) {
+        if (gst_structure_has_name (st, "photo-capture-start")) {
+          CP ("CAMERABIN SOURCE CAPTURE START");
+        } else if (gst_structure_has_name (st, "photo-capture-end")) {
+          CP ("CAMERABIN SOURCE CAPTURE END");
+        } else if (gst_structure_has_name (st, "autofocus-done")) {
+          if (gst_structure_get_int (st, "status", &status)) {
+            if (status == GST_PHOTOGRAPHY_FOCUS_STATUS_SUCCESS) {
+              CP ("CAMERABIN AUTOFOCUS DONE");
+            }
+          }
+        }
+      }
+#endif
       break;
   }
   GST_BIN_CLASS (parent_class)->handle_message (bin, msg);
@@ -4131,6 +4181,7 @@ gst_camerabin_capture_start (GstCameraBin * camera)
 {
 
   GST_INFO_OBJECT (camera, "starting capture");
+  CP ("CAMERABIN CAPTURE START");
   if (camera->paused) {
     gst_camerabin_capture_pause (camera);
     return;
@@ -4189,6 +4240,7 @@ gst_camerabin_capture_start (GstCameraBin * camera)
 static void
 gst_camerabin_capture_stop (GstCameraBin * camera)
 {
+  CP ("CAMERABIN CAPTURE STOP");
   if (camera->active_bin == camera->vidbin) {
     GST_INFO_OBJECT (camera, "stopping video capture");
     gst_camerabin_do_stop (camera);

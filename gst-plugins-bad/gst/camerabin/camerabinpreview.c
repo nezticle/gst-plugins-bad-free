@@ -21,6 +21,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include "gstcamerabin-performance.h"
 
 #include <gst/gst.h>
 #include <string.h>
@@ -213,6 +214,8 @@ gst_camerabin_preview_convert (GstCameraBinPreviewPipelineData * data,
     goto no_pipeline;
   }
 
+  CP ("CAMERABIN PREVIEW IMAGE CREATE");
+
   src = gst_bin_get_by_name (GST_BIN (data->pipeline), "prev_src");
   sink = gst_bin_get_by_name (GST_BIN (data->pipeline), "prev_sink");
 
@@ -288,6 +291,7 @@ done:
   if (sink)
     gst_object_unref (sink);
 
+  CP ("CAMERABIN PREVIEW IMAGE CREATED");
   return result;
 
   /* ERRORS */

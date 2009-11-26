@@ -47,7 +47,7 @@
 /*
  * includes
  */
-
+#include "gstcamerabin-performance.h"
 #include <gst/gst.h>
 
 #include "camerabinimage.h"
@@ -658,6 +658,8 @@ done:
   }
 
   GST_DEBUG_OBJECT (imagebin, "linking finished %s", ret ? "OK" : "NOK");
+
+  CP ("IMAGEBIN ELEMENTS CREATED");
 
   return ret;
 }
