@@ -219,7 +219,7 @@ static guint camerabin_signals[LAST_SIGNAL];
 #define ZOOM_1X MIN_ZOOM
 
 /* FIXME: this is v4l2camsrc specific */
-#define DEFAULT_V4L2CAMSRC_DRIVER_NAME "omap3cam"
+#define DEFAULT_V4L2CAMSRC_DRIVER_NAME "v4l2camext"
 
 #define DEFAULT_BLOCK_VIEWFINDER FALSE
 #define DEFAULT_READY_FOR_CAPTURE TRUE
