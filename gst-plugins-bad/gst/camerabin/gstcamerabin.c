@@ -320,6 +320,12 @@ static gboolean
 gst_camerabin_have_src_buffer (GstPad * pad, GstBuffer * buffer,
     gpointer u_data);
 
+#ifdef GST_TIMESTAMPS
+static gboolean
+gst_camerabin_print_timestamp_for_buffer (GstPad * pad, GstBuffer * buffer,
+    gpointer u_data);
+#endif
+
 static void gst_camerabin_reset_to_view_finder (GstCameraBin * camera);
 
 static void gst_camerabin_do_stop (GstCameraBin * camera);
@@ -696,6 +702,11 @@ camerabin_create_view_elements (GstCameraBin * camera)
   const GList *pads;
   GstBin *cbin = GST_BIN (camera);
 
+#ifdef GST_TIMESTAMPS
+  GstPad *viewsink_pad = NULL;
+  gulong *viewsink_handler_id = g_new (gulong, 1);
+#endif
+
   if (!(camera->view_in_sel =
           gst_camerabin_create_and_add_element (cbin, "input-selector",
               NULL))) {
@@ -747,6 +758,19 @@ camerabin_create_view_elements (GstCameraBin * camera)
   } else {
     if (!gst_camerabin_add_element (cbin, camera->view_sink))
       goto error;
+#ifdef GST_TIMESTAMPS
+    else {
+      viewsink_pad = gst_element_get_static_pad (camera->view_sink, "sink");
+      if (viewsink_pad != NULL) {
+        *viewsink_handler_id = gst_pad_add_buffer_probe (viewsink_pad,
+            G_CALLBACK (gst_camerabin_print_timestamp_for_buffer),
+            "CAMERABIN VIEWFINDER STARTED");
+        g_object_set_data (G_OBJECT (viewsink_pad), "handler-id",
+            viewsink_handler_id);
+        gst_object_unref (GST_OBJECT (viewsink_pad));
+      }
+    }
+#endif
   }
 
   return TRUE;
@@ -1800,6 +1824,11 @@ gst_camerabin_send_preview (GstCameraBin * camera, GstBuffer * buffer)
   GstMessage *msg;
   gboolean ret = FALSE;
 
+#ifdef GST_TIMESTAMPS
+  GstPad *viewsink_pad = NULL;
+  gulong *viewsink_handler_id = g_new (gulong, 1);
+#endif
+
   GST_DEBUG_OBJECT (camera, "creating preview");
 
   CP ("CAMERABIN CREATE PREVIEW");
@@ -1818,6 +1847,20 @@ gst_camerabin_send_preview (GstCameraBin * camera, GstBuffer * buffer)
     msg = gst_message_new_element (GST_OBJECT (camera), s);
 
     GST_DEBUG_OBJECT (camera, "sending message with preview image");
+
+#ifdef GST_TIMESTAMPS
+    if (camera->view_sink) {
+      viewsink_pad = gst_element_get_static_pad (camera->view_sink, "sink");
+      if (viewsink_pad != NULL) {
+        *viewsink_handler_id = gst_pad_add_buffer_probe (viewsink_pad,
+            G_CALLBACK (gst_camerabin_print_timestamp_for_buffer),
+            "CAMERABIN VIEWFINDER CONTINUE");
+        g_object_set_data (G_OBJECT (viewsink_pad), "handler-id",
+            viewsink_handler_id);
+        gst_object_unref (GST_OBJECT (viewsink_pad));
+      }
+    }
+#endif
 
     if (gst_element_post_message (GST_ELEMENT (camera), msg) == FALSE) {
       GST_WARNING_OBJECT (camera,
@@ -2077,6 +2120,30 @@ gst_camerabin_have_queue_data (GstPad * pad, GstMiniObject * mini_obj,
 
   return ret;
 }
+
+#ifdef GST_TIMESTAMPS
+/*
+ * gst_camerabin_print_timestamp_for_buffer:
+ * @pad: element's source or sink pad
+ * @buffer: buffer pushed to the pad
+ * @u_data: timestamp string
+ *
+ * Buffer probe for element's pad. It prints timestamp for buffer entering
+ * the pad.
+ */
+static gboolean
+gst_camerabin_print_timestamp_for_buffer (GstPad * pad, GstBuffer * buffer,
+    gpointer u_data)
+{
+  gulong *handler_id = g_object_get_data (G_OBJECT (pad), "handler-id");
+
+  CP ((gchar *) u_data);
+  gst_pad_remove_buffer_probe (pad, *handler_id);
+  g_free (handler_id);
+
+  return TRUE;
+}
+#endif
 
 /*
  * gst_camerabin_reset_to_view_finder:
@@ -3891,10 +3958,6 @@ gst_camerabin_change_state (GstElement * element, GstStateChange transition)
   GstCameraBin *camera = GST_CAMERABIN (element);
   GstStateChangeReturn ret;
 
-#ifdef GST_TIMESTAMPS
-  gboolean measure = FALSE;
-#endif
-
   GST_DEBUG_OBJECT (element, "changing state: %s -> %s",
       gst_element_state_get_name (GST_STATE_TRANSITION_CURRENT (transition)),
       gst_element_state_get_name (GST_STATE_TRANSITION_NEXT (transition)));
@@ -3916,10 +3979,6 @@ gst_camerabin_change_state (GstElement * element, GstStateChange transition)
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
       /* If using autovideosink, set view finder sink properties
          now that actual sink has been created. */
-#ifdef GST_TIMESTAMPS
-      CP ("CAMERABIN STARTING VIEWFINDER");
-      measure = TRUE;
-#endif
       camerabin_setup_view_elements (camera);
       break;
     case GST_STATE_CHANGE_PAUSED_TO_READY:
@@ -3994,12 +4053,6 @@ done:
       gst_element_state_get_name (GST_STATE_TRANSITION_CURRENT (transition)),
       gst_element_state_get_name (GST_STATE_TRANSITION_NEXT (transition)),
       gst_element_state_change_return_get_name (ret));
-
-#ifdef GST_TIMESTAMPS
-  if (measure) {
-    CP ("CAMERABIN VIEWFINDER STARTED");
-  }
-#endif
 
   return ret;
 }
