@@ -104,6 +104,8 @@ gst_photography_iface_base_init (GstPhotographyInterface * iface)
   iface->set_autofocus = NULL;
   iface->set_config = NULL;
   iface->get_config = NULL;
+  iface->set_format = NULL;
+  iface->get_format = NULL;
 }
 
 #define GST_PHOTOGRAPHY_FUNC_TEMPLATE(function_name, param_type) \
@@ -497,6 +499,60 @@ gst_photography_get_config (GstPhotography * photo, GstPhotoSettings * config)
 
   return ret;
 }
+
+/**
+ * gst_photography_set_format:
+ * @photo: #GstPhotography interface of a #GstElement
+ * @op_mode: #GstOperationMode operation mode to set
+ * @op_mode_caps: #GstCaps containing the op_mode caps
+ *
+ * Set caps for given operation mode
+ *
+ * Returns: TRUE if operation mode was set successfully, otherwise FALSE.
+ */
+gboolean
+gst_photography_set_format (GstPhotography * photo,
+    GstOperationMode op_mode, GstCaps * op_mode_caps)
+{
+  GstPhotographyInterface *iface;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (photo != NULL, FALSE);
+
+  iface = GST_PHOTOGRAPHY_GET_IFACE (photo);
+  if (iface->set_format) {
+    ret = iface->set_format (photo, op_mode, op_mode_caps);
+  }
+
+  return ret;
+}
+
+/**
+ * gst_photography_get_format:
+ * @photo: #GstPhotography interface of a #GstElement
+ * @op_mode: #GstOperationMode operation mode of which caps to get
+ *
+ * Get given operation mode mode caps
+ *
+ * Returns: A pointer to #GstCaps
+ */
+GstCaps *
+gst_photography_get_format (GstPhotography * photo, GstOperationMode op_mode)
+{
+  GstPhotographyInterface *iface;
+  GstCaps *ret;
+
+  g_return_val_if_fail (photo != NULL, NULL);
+
+  iface = GST_PHOTOGRAPHY_GET_IFACE (photo);
+  if (iface->get_format) {
+    ret = iface->get_format (photo, op_mode);
+  } else {
+    ret = NULL;
+  }
+  return ret;
+}
+
 
 /* Photography class initialization stuff */
 static void
