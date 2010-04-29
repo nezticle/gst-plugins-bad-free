@@ -703,6 +703,7 @@ camerabin_create_view_elements (GstCameraBin * camera)
   GstBin *cbin = GST_BIN (camera);
 
 #ifdef GST_TIMESTAMPS
+  const gchar *stamp_msg = "CAMERABIN VIEWFINDER STARTED";
   GstPad *viewsink_pad = NULL;
   gulong *viewsink_handler_id = g_new (gulong, 1);
 #endif
@@ -764,7 +765,7 @@ camerabin_create_view_elements (GstCameraBin * camera)
       if (viewsink_pad != NULL) {
         *viewsink_handler_id = gst_pad_add_buffer_probe (viewsink_pad,
             G_CALLBACK (gst_camerabin_print_timestamp_for_buffer),
-            "CAMERABIN VIEWFINDER STARTED");
+            (gpointer) stamp_msg);
         g_object_set_data (G_OBJECT (viewsink_pad), "handler-id",
             viewsink_handler_id);
         gst_object_unref (GST_OBJECT (viewsink_pad));
@@ -1825,6 +1826,7 @@ gst_camerabin_send_preview (GstCameraBin * camera, GstBuffer * buffer)
   gboolean ret = FALSE;
 
 #ifdef GST_TIMESTAMPS
+  const gchar *stamp_msg = "CAMERABIN VIEWFINDER CONTINUE";
   GstPad *viewsink_pad = NULL;
   gulong *viewsink_handler_id = g_new (gulong, 1);
 #endif
@@ -1854,7 +1856,7 @@ gst_camerabin_send_preview (GstCameraBin * camera, GstBuffer * buffer)
       if (viewsink_pad != NULL) {
         *viewsink_handler_id = gst_pad_add_buffer_probe (viewsink_pad,
             G_CALLBACK (gst_camerabin_print_timestamp_for_buffer),
-            "CAMERABIN VIEWFINDER CONTINUE");
+            (gpointer) stamp_msg);
         g_object_set_data (G_OBJECT (viewsink_pad), "handler-id",
             viewsink_handler_id);
         gst_object_unref (GST_OBJECT (viewsink_pad));
