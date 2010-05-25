@@ -4394,6 +4394,7 @@ gst_camerabin_set_image_capture_caps (GstCameraBin * camera, gint width,
 {
   GstStructure *structure;
   GstCaps *new_caps = NULL;
+  guint32 format = 0;
 
   g_return_if_fail (camera != NULL);
 
@@ -4405,6 +4406,11 @@ gst_camerabin_set_image_capture_caps (GstCameraBin * camera, gint width,
     new_caps = gst_caps_new_simple (gst_structure_get_name (structure),
         "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
 
+    /* Use the same fourcc format as in view finder mode */
+    if (gst_structure_get_fourcc (structure, "format", &format)) {
+      gst_caps_set_simple (new_caps, "format", GST_TYPE_FOURCC, format, NULL);
+    }
+
     /* Set allowed framerate for the resolution. */
     gst_camerabin_set_allowed_framerate (camera, new_caps);
   }
@@ -4415,6 +4421,18 @@ gst_camerabin_set_image_capture_caps (GstCameraBin * camera, gint width,
   camera->image_capture_caps_update = FALSE;
   if (new_caps)
     gst_caps_unref (new_caps);
+
+  /* if src implements GstPhotography we set the format to it to allow
+   * it prealloc stuff */
+  if (GST_IS_ELEMENT (camera->src_vid_src) &&
+      gst_element_implements_interface (camera->src_vid_src,
+          GST_TYPE_PHOTOGRAPHY)) {
+    GST_DEBUG_OBJECT (camera, "Setting src capture caps %" GST_PTR_FORMAT,
+        camera->image_capture_caps);
+    gst_photography_set_format (GST_PHOTOGRAPHY (camera->src_vid_src),
+        GST_PHOTOGRAPHY_OPERATION_MODE_IMAGE_CAPTURE,
+        camera->image_capture_caps);
+  }
 }
 
 static void
@@ -4423,6 +4441,12 @@ gst_camerabin_set_image_resolution (GstCameraBin * camera, gint width,
 {
   g_object_set (camera, "image-capture-width", (guint16) width,
       "image-capture-height", (guint16) height, NULL);
+
+  if ((!camera->image_capture_caps || camera->image_capture_caps_update) &&
+      camera->image_capture_width && camera->image_capture_height) {
+    gst_camerabin_set_image_capture_caps (camera,
+        camera->image_capture_width, camera->image_capture_height);
+  }
 }
 
 /* entry point to initialize the plug-in
