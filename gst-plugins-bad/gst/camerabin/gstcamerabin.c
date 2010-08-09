@@ -414,6 +414,9 @@ static void
 gst_camerabin_set_image_resolution (GstCameraBin * camera, gint width,
     gint height);
 
+static void
+gst_camerabin_filter_aspect_ratios_from_caps (GstCameraBin * camera,
+    gdouble target_ar, GstCaps * caps);
 
 /*
  * GST BOILERPLATE and GObject types
@@ -2280,6 +2283,8 @@ gst_camerabin_set_allowed_framerate (GstCameraBin * camera,
   const GValue *framerate = NULL;
   guint caps_size, i;
   guint32 format = 0;
+  gint w = 0, h = 0;
+  gdouble requested_ar = 0.0;
 
   GST_INFO_OBJECT (camera, "filter caps:%" GST_PTR_FORMAT, filter_caps);
 
@@ -2297,10 +2302,25 @@ gst_camerabin_set_allowed_framerate (GstCameraBin * camera,
     gst_structure_remove_field (structure, "format");
   }
 
+  /* Get supported caps from video source */
+  allowed_caps = gst_camerabin_get_allowed_input_caps (camera);
+
+  /* Subdevsrc supports width and height ranges for each frame rate.
+     Range max values and the frame rate in each gst structure essentially
+     define one sensor mode in the driver. For optimal use we need to use
+     sensor mode that has aspect ratio matching the requested resolution. */
+  gst_structure_get_int (structure, "width", &w);
+  gst_structure_get_int (structure, "height", &h);
+  if (w && h) {
+    requested_ar = (gdouble) w / h;
+  }
+  GST_LOG_OBJECT (camera, "aspect ratio of requested resolution (%dx%d): %lf",
+      w, h, requested_ar);
+  gst_camerabin_filter_aspect_ratios_from_caps (camera, requested_ar,
+      allowed_caps);
+
   tmp_caps = gst_caps_new_full (structure, NULL);
 
-  /* Get supported caps from video src that matches with new filter caps */
-  allowed_caps = gst_camerabin_get_allowed_input_caps (camera);
   intersect = gst_caps_intersect (allowed_caps, tmp_caps);
   GST_INFO_OBJECT (camera, "intersect caps:%" GST_PTR_FORMAT, intersect);
 
@@ -4446,6 +4466,73 @@ gst_camerabin_set_image_resolution (GstCameraBin * camera, gint width,
       camera->image_capture_width && camera->image_capture_height) {
     gst_camerabin_set_image_capture_caps (camera,
         camera->image_capture_width, camera->image_capture_height);
+  }
+}
+
+#define CAMERABIN_ASPECT_RATIO_REMOVE_THRESHOLD 0.2
+
+/*
+ * gst_camerabin_filter_aspect_ratios_from_caps:
+ * @camera: camerabin object
+ * @target_ar: aspect ratio of the requested video
+ * @caps: caps describing all supported formats
+ *
+ * If video source provides supported resolutions in @caps as ranges,
+ * then use range maximum values as the aspect ratio of each structure.
+ *
+ * Then remove structures from @caps that don't have aspect ratio
+ * that matches with @target_ar.
+ */
+static void
+gst_camerabin_filter_aspect_ratios_from_caps (GstCameraBin * camera,
+    gdouble target_ar, GstCaps * caps)
+{
+  guint i, caps_size;
+  gint w_max = 0, h_max = 0;
+  GstStructure *st;
+  const GValue *dimension;
+  gdouble structure_ar = 0.0;
+
+  GST_DEBUG_OBJECT (camera,
+      "filtering aspect ratio %lf from: %" GST_PTR_FORMAT "", target_ar, caps);
+
+  /* Remove structures that don't match with target aspect ratio */
+  caps_size = gst_caps_get_size (caps);
+  for (i = 0; i < caps_size; i++) {
+    st = gst_caps_get_structure (caps, i);
+
+    GST_LOG_OBJECT (camera, "structure: %" GST_PTR_FORMAT, st);
+
+    /* If supported caps have width/height ranges specified, use the
+       range maximum values for aspect ratio. */
+    if (gst_structure_has_field_typed (st, "width", GST_TYPE_INT_RANGE)) {
+      dimension = gst_structure_get_value (st, "width");
+      w_max = gst_value_get_int_range_max (dimension);
+    }
+
+    if (gst_structure_has_field_typed (st, "height", GST_TYPE_INT_RANGE)) {
+      dimension = gst_structure_get_value (st, "height");
+      h_max = gst_value_get_int_range_max (dimension);
+    }
+
+    if (w_max && h_max) {
+      structure_ar = (gdouble) w_max / h_max;
+
+      GST_LOG_OBJECT (camera, "aspect ratios: target %lf - structure %lf",
+          target_ar, structure_ar);
+
+      if (ABS (target_ar - structure_ar) >
+          CAMERABIN_ASPECT_RATIO_REMOVE_THRESHOLD) {
+        /* Aspect ratio of the structure differs too much from the target, removing the structure */
+        GST_LOG_OBJECT (camera, "removing structure %" GST_PTR_FORMAT, st);
+        gst_caps_remove_structure (caps, i);
+        /* Current structure was removed and size of caps changed */
+        i--;
+        caps_size--;
+      }
+    }
+    w_max = 0;
+    h_max = 0;
   }
 }
 
