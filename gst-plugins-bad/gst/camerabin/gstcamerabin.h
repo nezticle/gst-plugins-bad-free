@@ -192,6 +192,9 @@ struct _GstCameraBin
   gint base_crop_bottom;
   gint base_crop_left;
   gint base_crop_right;
+
+  /* Indicates if preview image has been sent to application */
+  gboolean preview_sent;
 };
 
 /**
