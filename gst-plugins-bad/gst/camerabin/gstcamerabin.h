@@ -91,6 +91,7 @@ struct _GstCameraBin
   /* Frames per second configured to camerabin */
   gint fps_n;
   gint fps_d;
+  gboolean framerate_rounding;
 
   /* app configured resolution/framerate */
   gint app_width;
