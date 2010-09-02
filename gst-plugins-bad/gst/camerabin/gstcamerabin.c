@@ -4158,6 +4158,13 @@ gst_camerabin_change_state (GstElement * element, GstStateChange transition)
       /* If using autovideosink, set view finder sink properties
          now that actual sink has been created. */
       camerabin_setup_view_elements (camera);
+
+      /* set the capture format for images if that is available */
+      if ((!camera->image_capture_caps || camera->image_capture_caps_update) &&
+          camera->image_capture_width && camera->image_capture_height) {
+        gst_camerabin_set_image_capture_caps (camera,
+            camera->image_capture_width, camera->image_capture_height);
+      }
       break;
     case GST_STATE_CHANGE_PAUSED_TO_READY:
       /* all processing should stop and those elements could have their state
@@ -4212,6 +4219,8 @@ gst_camerabin_change_state (GstElement * element, GstStateChange transition)
           gst_camerabin_scene_mode_notify_cb, camera);
       g_signal_handlers_disconnect_by_func (camera->src_vid_src,
           gst_camerabin_zoom_notify_cb, camera);
+      /* we might need to update our caps when going back to PLAYING */
+      camera->image_capture_caps_update = TRUE;
       break;
     case GST_STATE_CHANGE_READY_TO_NULL:
       camerabin_destroy_elements (camera);
