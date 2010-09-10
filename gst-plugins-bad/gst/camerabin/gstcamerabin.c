@@ -4328,7 +4328,6 @@ gst_camerabin_handle_message_func (GstBin * bin, GstMessage * msg)
   GstCameraBin *camera = GST_CAMERABIN (bin);
 
 #ifdef GST_TIMESTAMPS
-  const GstStructure *st;
   gint status;
 #endif
 
@@ -4397,15 +4396,8 @@ gst_camerabin_handle_message_func (GstBin * bin, GstMessage * msg)
             /* Re-format preview image if necessary and send to application */
             gst_camerabin_send_preview (camera, preview_image);
           }
-        }
-      }
-      break;
-    }
-    default:
 #ifdef GST_TIMESTAMPS
-      st = gst_message_get_structure (msg);
-      if (st) {
-        if (gst_structure_has_name (st, "photo-capture-start")) {
+        } else if (gst_structure_has_name (st, "photo-capture-start")) {
           CP ("CAMERABIN SOURCE CAPTURE START");
         } else if (gst_structure_has_name (st, "photo-capture-end")) {
           CP ("CAMERABIN SOURCE CAPTURE END");
@@ -4416,8 +4408,13 @@ gst_camerabin_handle_message_func (GstBin * bin, GstMessage * msg)
             }
           }
         }
-      }
+#else
+        }
 #endif
+      }
+      break;
+    }
+    default:
       break;
   }
   GST_BIN_CLASS (parent_class)->handle_message (bin, msg);
