@@ -671,6 +671,15 @@ camerabin_create_src_elements (GstCameraBin * camera)
     }
   }
 
+  /* Set "viewfinder-mode" for subdevsrc */
+  /* FIXME: subdevsrc specific */
+  if (camera->src_vid_src &&
+      g_object_class_find_property (G_OBJECT_GET_CLASS (camera->src_vid_src),
+          "viewfinder-mode")) {
+    g_object_set (G_OBJECT (camera->src_vid_src), "viewfinder-mode",
+        (camera->mode == MODE_IMAGE) ? 0 : 1, NULL);
+  }
+
   ret = TRUE;
 done:
   return ret;
@@ -1112,6 +1121,16 @@ gst_camerabin_change_mode (GstCameraBin * camera, gint mode)
       } else if (camera->mode == MODE_VIDEO) {
         camera->active_bin = camera->vidbin;
       }
+
+      /* Set "viewfinder-mode" for subdevsrc */
+      /* FIXME: subdevsrc specific */
+      if (camera->src_vid_src &&
+          g_object_class_find_property (G_OBJECT_GET_CLASS
+              (camera->src_vid_src), "viewfinder-mode")) {
+        g_object_set (G_OBJECT (camera->src_vid_src), "viewfinder-mode",
+            (camera->mode == MODE_IMAGE) ? 0 : 1, NULL);
+      }
+
       gst_camerabin_reset_to_view_finder (camera);
     } else if (camera->mode == MODE_IMAGE) {
       /* Prepare needed elements for image processing */
