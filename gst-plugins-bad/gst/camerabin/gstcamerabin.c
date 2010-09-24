@@ -2895,6 +2895,32 @@ gst_camerabin_zoom_notify_cb (GObject * video_source, GParamSpec * pspec,
 }
 
 /*
+ * gst_camerabin_preview_notify_cb:
+ * @video_source: videosrc object
+ * @pspec:        GParamSpec for property
+ * @user_data:    camerabin object
+ *
+ * Set preview caps to video source if they're configured to camerabin,
+ * but not in use in video source.
+ *
+ */
+static void
+gst_camerabin_preview_notify_cb (GObject * video_source, GParamSpec * pspec,
+    gpointer user_data)
+{
+  GstCameraBin *camera = GST_CAMERABIN (user_data);
+  if (gst_photography_get_format (GST_PHOTOGRAPHY (camera->src_vid_src),
+          GST_PHOTOGRAPHY_OPERATION_MODE_PREVIEW) == NULL
+      && camera->preview_caps) {
+    /* Preview caps have been set to camerabin, but they are not in effect
+       in video source. This may happen if preview caps were previously set
+       while video source was in NULL state or video source has reset them. */
+    GST_DEBUG_OBJECT (camera, "setting preview caps again");
+    gst_camerabin_set_video_source_preview_caps (camera);
+  }
+}
+
+/*
  * gst_camerabin_monitor_video_source_properties:
  * @camera: camerabin object
  *
@@ -2924,6 +2950,14 @@ gst_camerabin_monitor_video_source_properties (GstCameraBin * camera)
         camera->src_vid_src);
     g_signal_connect (G_OBJECT (camera->src_vid_src), "notify::zoom",
         (GCallback) gst_camerabin_zoom_notify_cb, camera);
+    GST_DEBUG_OBJECT (camera,
+        "connecting to %" GST_PTR_FORMAT
+        " - notify::image-preview-supported-caps", camera->src_vid_src);
+    /* Use _connect_after() so that application has the priority for 
+       handling the notification, we check it only as fallback */
+    g_signal_connect_after (G_OBJECT (camera->src_vid_src),
+        "notify::image-preview-supported-caps",
+        (GCallback) gst_camerabin_preview_notify_cb, camera);
   }
 }
 
@@ -4238,6 +4272,9 @@ gst_camerabin_change_state (GstElement * element, GstStateChange transition)
           gst_camerabin_scene_mode_notify_cb, camera);
       g_signal_handlers_disconnect_by_func (camera->src_vid_src,
           gst_camerabin_zoom_notify_cb, camera);
+      g_signal_handlers_disconnect_by_func (camera->src_vid_src,
+          gst_camerabin_preview_notify_cb, camera);
+
       /* we might need to update our caps when going back to PLAYING */
       camera->image_capture_caps_update = TRUE;
       break;
