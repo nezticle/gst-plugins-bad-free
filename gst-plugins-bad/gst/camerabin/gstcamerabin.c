@@ -2909,9 +2909,16 @@ gst_camerabin_preview_notify_cb (GObject * video_source, GParamSpec * pspec,
     gpointer user_data)
 {
   GstCameraBin *camera = GST_CAMERABIN (user_data);
-  if (gst_photography_get_format (GST_PHOTOGRAPHY (camera->src_vid_src),
-          GST_PHOTOGRAPHY_OPERATION_MODE_PREVIEW) == NULL
-      && camera->preview_caps) {
+  GstCaps *source_preview_caps = NULL;
+
+  source_preview_caps =
+      gst_photography_get_format (GST_PHOTOGRAPHY (camera->src_vid_src),
+      GST_PHOTOGRAPHY_OPERATION_MODE_PREVIEW);
+
+  if (source_preview_caps != NULL) {
+    /* Preview caps has been set to video source ok */
+    gst_caps_unref (source_preview_caps);
+  } else if (camera->preview_caps) {
     /* Preview caps have been set to camerabin, but they are not in effect
        in video source. This may happen if preview caps were previously set
        while video source was in NULL state or video source has reset them. */
