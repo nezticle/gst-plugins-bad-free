@@ -2310,7 +2310,8 @@ gst_camerabin_set_allowed_framerate (GstCameraBin * camera,
     GstCaps * filter_caps)
 {
   GstStructure *structure;
-  GstCaps *allowed_caps = NULL, *intersect = NULL, *tmp_caps = NULL;
+  GstCaps *allowed_caps = NULL, *allowed_caps_copied = NULL, *intersect =
+      NULL, *tmp_caps = NULL;
   const GValue *framerate = NULL;
   guint caps_size, i;
   guint32 format = 0;
@@ -2347,6 +2348,7 @@ gst_camerabin_set_allowed_framerate (GstCameraBin * camera,
   }
   GST_LOG_OBJECT (camera, "aspect ratio of requested resolution (%dx%d): %lf",
       w, h, requested_ar);
+  allowed_caps_copied = gst_caps_copy (allowed_caps);
   gst_camerabin_filter_aspect_ratios_from_caps (camera, requested_ar,
       allowed_caps);
 
@@ -2357,6 +2359,14 @@ gst_camerabin_set_allowed_framerate (GstCameraBin * camera,
 
   /* Find the best framerate from the caps */
   caps_size = gst_caps_get_size (intersect);
+  if (caps_size == 0) {
+    /* Intersect against the original allowed caps when no intersect found
+       This may produce non-optimal caps but better than nothing */
+    gst_caps_unref (intersect);
+    intersect = gst_caps_intersect (allowed_caps_copied, tmp_caps);
+    caps_size = gst_caps_get_size (intersect);
+  }
+
   for (i = 0; i < caps_size; i++) {
     structure = gst_caps_get_structure (intersect, i);
     if (camera->night_mode || camera->fps_n == 0 || camera->fps_d == 0
@@ -2380,11 +2390,18 @@ gst_camerabin_set_allowed_framerate (GstCameraBin * camera,
         "framerate", GST_TYPE_FRACTION,
         gst_value_get_fraction_numerator (framerate),
         gst_value_get_fraction_denominator (framerate), NULL);
+  } else {
+    GST_WARNING_OBJECT (camera,
+        "no proper framerate found, returning caps without framerate:%"
+        GST_PTR_FORMAT, filter_caps);
   }
 
   /* Unref helper caps */
   if (allowed_caps) {
     gst_caps_unref (allowed_caps);
+  }
+  if (allowed_caps_copied) {
+    gst_caps_unref (allowed_caps_copied);
   }
   if (intersect) {
     gst_caps_unref (intersect);
