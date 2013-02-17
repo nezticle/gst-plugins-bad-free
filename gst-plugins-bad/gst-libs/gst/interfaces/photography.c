@@ -670,6 +670,12 @@ gst_photography_iface_class_init (gpointer g_class)
           "How much the resulted image will be zoomed",
           1.0f, 10.0f, 1.0f, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  /* Autofocus */
+  g_object_interface_install_property (g_class,
+      g_param_spec_boolean (GST_PHOTOGRAPHY_PROP_AUTOFOCUS, "autofocus",
+          "Set true to start autofocus sequence and false to interrupt it",
+          FALSE, G_PARAM_READWRITE));
+
   /* Noise Reduction, Bayer an YCC noise reduction are enabled by default */
   g_object_interface_install_property (g_class,
       g_param_spec_flags (GST_PHOTOGRAPHY_PROP_NOISE_REDUCTION,
