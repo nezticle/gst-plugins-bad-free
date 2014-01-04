@@ -10,7 +10,6 @@ License:    LGPLv2+ and LGPLv2
 URL:        http://gstreamer.freedesktop.org/
 Source0:    gst-plugins-bad-free-%{version}.tar.bz2
 Source1:    gst-p-bad-cleanup.sh
-Source100:  gst-plugins-bad-free.yaml
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 BuildRequires:  pkgconfig(orc-0.4) >= 0.4.5
@@ -22,6 +21,7 @@ BuildRequires:  pkgconfig(xt)
 %endif
 BuildRequires:  check
 BuildRequires:  gettext-devel
+BuildRequires:  vim
 
 %description
 GStreamer is a streaming media framework, based on graphs of elements which
@@ -42,10 +42,15 @@ Development files for the GStreamer media framework bad free plug-ins
 
 %prep
 %setup -q -n %{name}-%{version}/gst-plugins-bad
+chmod +x %{_sourcedir}/gst-p-bad-cleanup.sh
 
 %build
 
-%autogen --disable-static \
+# filter bad sources
+%{_sourcedir}/gst-p-bad-cleanup.sh
+export NOCONFIGURE=1
+%autogen
+%reconfigure --disable-static \
     --with-package-name='Mer GStreamer Bad Free Plugins package' \
     --with-package-origin='http://www.merproject.org/' \
     --enable-experimental \
