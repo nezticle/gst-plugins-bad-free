@@ -94,6 +94,7 @@ rm -rf %{buildroot}/%{_datadir}/gtk-doc
 %{_libdir}/gstreamer-0.10/libgstvideomaxrate.so
 %{_libdir}/gstreamer-0.10/libgstvideoparsersbad.so
 %{_libdir}/gstreamer-0.10/libgstfragmented.so
+%{_libdir}/gstreamer-0.10/libgstmpegtsdemux.so
 %ifarch %{ix86} x86_64
 %{_libdir}/gstreamer-0.10/libgstreal.so
 %endif
