@@ -37,6 +37,7 @@ vp8
 videoparsers
 fragmented
 hls
+mpegtsdemux
 "
 
 error()
