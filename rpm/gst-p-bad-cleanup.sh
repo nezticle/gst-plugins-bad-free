@@ -35,6 +35,7 @@ videomaxrate
 real
 vp8
 videoparsers
+fragmented
 "
 
 error()
