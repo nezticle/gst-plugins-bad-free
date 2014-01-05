@@ -36,6 +36,7 @@ real
 vp8
 videoparsers
 fragmented
+hls
 "
 
 error()
